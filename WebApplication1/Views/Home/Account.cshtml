@@ -1,0 +1,300 @@
+﻿@{
+    ViewData["Title"] = "Account";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helloworld Bank</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 25%;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .content {
+            margin-left: 25%;
+            padding: 20px;
+        }
+
+        .content-area {
+            display: none;
+        }
+
+            .content-area.active {
+                display: block;
+            }
+
+        .sidebar a:hover:not(.active) {
+            background-color: #555;
+            color: white;
+        }
+
+        .nav-link {
+            font-size: 30px;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 id="username">Welcome, User</h2>
+        <p id="account">AccountID: 0</p>
+        <p id="balance">Balance: 0 BAHT</p>
+        <button class="btn btn-outline-danger" onclick="logout()">Logout</button>
+        <hr></hr>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showContent('deposit')">Deposit</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showContent('withdraw')">Withdraw</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showContent('transfer')">Transfer</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showContent('transferTransaction');transferTransaciton()">Transfer Transactions</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showContent('receivedTransaction');receivedTransaciton()">Received Transactions</a>
+            </li>
+        </ul>
+    </div>
+    <div class="content">
+        <div id="deposit" class="content-area">
+            <h3>Deposit</h3>
+            <input type="number" id="depositAmount" placeholder="Deposit Amount" class="form-control mb-2" />
+            <button type="button" class="btn btn-success btn-block mb-4" onclick="deposit()">Deposit</button>
+        </div>
+        <div id="withdraw" class="content-area">
+            <h3>Withdraw</h3>
+            <input type="number" id="withdrawAmount" placeholder="Withdraw Amount" class="form-control mb-2" />
+            <button type="button" class="btn btn-danger btn-block mb-4" onclick="withdraw()">Withdraw</button>
+        </div>
+        <div id="transfer" class="content-area">
+            <h3>Transfer</h3>
+            <input type="number" id="transferToUserId" placeholder="Receiver User ID" class="form-control mb-2" />
+            <input type="number" id="transferAmount" placeholder="Transfer Amount" class="form-control mb-2" />
+            <button type="button" class="btn btn-primary btn-block mb-4" onclick="transfer()">Transfer</button>
+        </div>
+        <div id="transferTransaction" class="content-area">
+            <h3>Transfer Transactions</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>To user</th>
+                        <th>Remain</th>
+                        <th>Action</th>
+                        <th>From user</th>
+                        <th>Amount</th>
+                    </tr>
+                <tbody id="transactionHistory">
+                </tbody>
+                </thead>
+            </table>
+        </div>
+        <div id="receivedTransaction" class="content-area">
+            <h3>Received Transactions</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>To user</th>
+                        <th>Remain</th>
+                        <th>Action</th>
+                        <th>From user</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionHistory">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let userId;
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAccountInfo();
+
+            console.log(userId)
+        });
+
+        function showContent(id) {
+            const sections = document.querySelectorAll('.content-area');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(id).classList.add('active');
+        }
+
+        async function fetchAccountInfo() {
+            const token = localStorage.getItem('token');
+
+            const response = await fetch('/api/users/accountinfo', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('username').innerText = 'Welcome, ' + data.username;
+                document.getElementById('balance').innerText = 'Balance: ' + data.balance + ' BAHT';
+                document.getElementById('account').innerText = 'AccountID: ' + data.userId;
+                userId = data.userId;
+            } else {
+                alert('Failed to retrieve account information.');
+            }
+
+        }
+
+        function transferTransaciton() {
+            fetchTransactionHistory('transfer', userId);
+        }
+
+        function receivedTransaciton() {
+            fetchTransactionHistory('received', userId);
+        }
+
+        async function deposit() {
+            const token = localStorage.getItem('token');
+            const amount = document.getElementById('depositAmount').value;
+
+            const response = await fetch('/api/transactions/deposit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount: parseFloat(amount) })
+            });
+
+            if (response.ok) {
+                alert('Deposit successful!');
+                fetchAccountInfo();
+            } else {
+                alert('Deposit failed!');
+            }
+        }
+
+        async function withdraw() {
+            const token = localStorage.getItem('token');
+            const amount = document.getElementById('withdrawAmount').value;
+
+            const response = await fetch('/api/transactions/withdraw', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount: parseFloat(amount) })
+            });
+
+            if (response.ok) {
+                alert('Withdrawal successful!');
+                fetchAccountInfo();
+            } else {
+                alert('Withdrawal failed!');
+            }
+        }
+
+        async function transfer() {
+            const token = localStorage.getItem('token');
+            const toUserId = document.getElementById('transferToUserId').value;
+            const amount = document.getElementById('transferAmount').value;
+
+            const response = await fetch('/api/transactions/transfer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ toUserId: parseInt(toUserId), amount: parseFloat(amount) })
+            });
+
+            if (response.ok) {
+                alert('Transfer successful!');
+                fetchAccountInfo();
+            } else {
+                alert('Transfer failed!');
+            }
+        }
+
+        async function fetchUsernameById(userId) {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/users/username/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const userData = await response.json();
+                return userData.username;
+            } else {
+                return 'Unknown';
+            }
+        }
+
+        async function fetchTransactionHistory(type, userId) {
+            const token = localStorage.getItem('token');
+
+            const response = await fetch('/api/transactions/history', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const historyElement = document.getElementById('transactionHistory');
+                historyElement.innerHTML = ''; 
+
+                filteredData = data;
+                if (type === 'transfer') {
+                    filteredData = data.filter(transaction => transaction.actionType === 'Transfer' && transaction.fromUserId === userId)
+                } else if (type === 'received') {
+                    filteredData = data.filter(transaction => transaction.actionType === 'Received' && transaction.userId === userId);
+                }
+
+                for (const transaction of filteredData) {
+                    const fromUsername = await fetchUsernameById(transaction.fromUserId);
+                    const toUsername = await fetchUsernameById(transaction.userId);
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                                        <td>${new Date(transaction.date).toLocaleString()}</td>
+                                        <td>${toUsername}</td>
+                                        <td>${transaction.remain}</td>
+                                        <td>${transaction.actionType}</td>
+                                        <td>${fromUsername}</td>
+                                        <td>${transaction.amount}</td>
+                                    `;
+                    historyElement.appendChild(row);
+                }
+            } else {
+                alert('Failed to retrieve transaction history.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token'); 
+            window.location.href = '/home'; 
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
